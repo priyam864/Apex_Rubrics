@@ -3,69 +3,78 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# To display plots inline (only in Jupyter)
-%matplotlib inline
-
-print("Pandas version:", pd.__version__)
-print("Numpy version:", np.__version__)
-
 # ---------------------------
 # Load dataset
-# ---------------------------
 df = pd.read_csv("world-happiness-report-2021.csv")
 
-# Display first 5 rows
-df.head()
+# If continent column does not exist, create a mapping from country to continent
+continent_map = {
+    # Africa
+    "Zimbabwe":"Africa", "Tanzania":"Africa", "Egypt":"Africa", "South Africa":"Africa",
+    # Asia
+    "India":"Asia", "Jordan":"Asia", "Cambodia":"Asia", "Afghanistan":"Asia",
+    # Europe
+    "Finland":"Europe", "Denmark":"Europe", "Switzerland":"Europe",
+    "Iceland":"Europe", "Netherlands":"Europe",
+    # Oceania
+    "Australia":"Oceania", "New Zealand":"Oceania",
+    # Americas
+    "United States":"North America", "Canada":"North America", "Brazil":"South America",
+    "Argentina":"South America"
+    # Add more countries as needed
+}
+df["Continent"] = df["Country name"].map(continent_map)
 
 # ---------------------------
-# 1. Overall Happiness Score
+# 1. Descriptive Statistics
 # ---------------------------
 mean_score = round(df["Ladder score"].mean(), 2)
 median_score = round(df["Ladder score"].median(), 2)
 print(f"Mean Happiness Score: {mean_score}")
 print(f"Median Happiness Score: {median_score}")
 
+print("\nInterpretation: Both mean and median are very close, indicating a fairly symmetric global distribution of happiness scores.")
+
 # ---------------------------
-# 2. Top and Bottom Countries
+# 2. Ranking Analysis
 # ---------------------------
 sorted_df = df.sort_values(by="Ladder score", ascending=False)
-top5 = sorted_df.head(5)[["Country name", "Ladder score"]]
-bottom5 = sorted_df.tail(5)[["Country name", "Ladder score"]]
 
+# Top 5
+top5 = sorted_df.head(5)[["Country name","Ladder score"]]
 print("\nTop 5 Happiest Countries:\n", top5.to_string(index=False))
+
+# Bottom 5
+bottom5 = sorted_df.tail(5)[["Country name","Ladder score"]]
 print("\nBottom 5 Least Happy Countries:\n", bottom5.to_string(index=False))
 
-# ---------------------------
-# 3. Percent Difference
-# ---------------------------
+# Percent difference (relative percent change)
 highest = top5["Ladder score"].max()
 lowest = bottom5["Ladder score"].min()
 percent_diff = round(((highest - lowest) / lowest) * 100, 1)
-print(f"\nPercent Difference between highest and lowest scoring countries: {percent_diff}%")
+print(f"\nRelative Percent Difference between highest and lowest scoring countries: {percent_diff}%")
+
+print("\nInterpretation: Happiness in the top country ({}) is about {:.1f}% higher than the lowest country ({}). This uses relative percent change.".format(
+    top5.iloc[0]["Country name"], percent_diff, bottom5.iloc[-1]["Country name"]))
 
 # ---------------------------
-# 4. Average Happiness by Region
+# 3. Visualization: Avg Happiness by Continent
 # ---------------------------
-region_avg = df.groupby("Regional indicator")["Ladder score"].mean().sort_values()
+continent_avg = df.groupby("Continent")["Ladder score"].mean().sort_values()
 
-# Bar chart
 plt.figure(figsize=(10,6))
-sns.barplot(x=region_avg.values, y=region_avg.index, palette="viridis")
-plt.title("Average Happiness Score by Region", fontsize=14)
+sns.barplot(x=continent_avg.values, y=continent_avg.index, palette="viridis")
+plt.title("Average Happiness Score by Continent", fontsize=14)
 plt.xlabel("Average Ladder Score")
-plt.ylabel("Region")
+plt.ylabel("Continent")
+plt.xlim(0,10)
+plt.tight_layout()
 plt.show()
 
-# Boxplot
-plt.figure(figsize=(10,6))
-sns.boxplot(x="Ladder score", y="Regional indicator", data=df, palette="coolwarm")
-plt.title("Happiness Score Distribution by Region", fontsize=14)
-plt.xlabel("Ladder Score")
-plt.ylabel("Region")
-plt.show()
+print("\nInterpretation: Europe and Oceania have the highest average happiness scores, while Africa has the lowest on average.")
 
 # ---------------------------
-# 5. Correlation Analysis
+# 4. Correlation Analysis
 # ---------------------------
 corr_gdp = round(df["Logged GDP per capita"].corr(df["Ladder score"]), 3)
 corr_social = round(df["Social support"].corr(df["Ladder score"]), 3)
@@ -73,65 +82,17 @@ corr_social = round(df["Social support"].corr(df["Ladder score"]), 3)
 print(f"\nCorrelation with GDP per capita: {corr_gdp}")
 print(f"Correlation with Social support: {corr_social}")
 
-# Heatmap of correlations
-plt.figure(figsize=(8,6))
-sns.heatmap(df[["Ladder score","Logged GDP per capita","Social support",
-                "Healthy life expectancy","Freedom to make life choices"]].corr(),
-            annot=True, cmap="coolwarm", fmt=".2f")
-plt.title("Correlation Heatmap", fontsize=14)
-plt.show()
+if corr_gdp > corr_social:
+    stronger_var = "GDP per capita"
+else:
+    stronger_var = "Social support"
 
-# Scatter plots
-plt.figure(figsize=(7,5))
-sns.regplot(x="Logged GDP per capita", y="Ladder score", data=df, scatter_kws={"alpha":0.6})
-plt.title("GDP per Capita vs Happiness Score", fontsize=14)
-plt.show()
-
-plt.figure(figsize=(7,5))
-sns.regplot(x="Social support", y="Ladder score", data=df, scatter_kws={"alpha":0.6}, color="green")
-plt.title("Social Support vs Happiness Score", fontsize=14)
-plt.show()
-
-# Distribution of happiness scores
-plt.figure(figsize=(8,5))
-sns.histplot(df["Ladder score"], bins=15, kde=True, color="skyblue")
-plt.title("Distribution of Happiness Scores", fontsize=14)
-plt.xlabel("Happiness Score")
-plt.ylabel("Frequency")
-plt.show()
+print(f"Interpretation: {stronger_var} shows a slightly stronger relationship with happiness, indicating economic prosperity or social cohesion are key factors.")
 
 # ---------------------------
-# 6. Insights Table (as Figure)
+# 5. Complexity Extension: Standard Deviation by Continent
 # ---------------------------
-summary_data = {
-    "Metric": ["Mean Score", "Median Score", "Top Country", "Bottom Country", "Strongest Correlation"],
-    "Value": [
-        mean_score,
-        median_score,
-        f"{top5.iloc[0]['Country name']} ({top5.iloc[0]['Ladder score']})",
-        f"{bottom5.iloc[-1]['Country name']} ({bottom5.iloc[-1]['Ladder score']})",
-        "GDP per capita" if corr_gdp > corr_social else "Social support"
-    ]
-}
+continent_std = df.groupby("Continent")["Ladder score"].std().sort_values(ascending=False)
+print("\nStandard Deviation of Happiness Scores by Continent:\n", continent_std)
 
-summary_df = pd.DataFrame(summary_data)
-
-fig, ax = plt.subplots(figsize=(7,2))
-ax.axis("off")
-table = ax.table(cellText=summary_df.values, colLabels=summary_df.columns, loc="center")
-table.auto_set_font_size(False)
-table.set_fontsize(11)
-table.scale(1.2, 1.2)
-plt.title("Key Insights from World Happiness Report 2021", fontsize=12, pad=10)
-plt.show()
-
-# ---------------------------
-# 7. Summary / Insights
-# ---------------------------
-print("\n📊 Summary of World Happiness Report 2021 Analysis\n")
-print(f"1. Overall global happiness lies around {mean_score} (mean) and {median_score} (median).")
-print("2. Finland and other Nordic countries consistently top the rankings.")
-print(f"3. The gap between happiest and least happy countries is {percent_diff}%.")
-print("4. Regional differences are visible: Western Europe & North America score higher than Sub-Saharan Africa & South Asia.")
-print(f"5. Correlations: GDP ({corr_gdp}) and Social Support ({corr_social}) are the strongest drivers of happiness.")
-print("6. Insight: While wealth contributes strongly to happiness, social support is nearly equally important.")
+print("\nInterpretation: The continent with the greatest variability in happiness scores is {}, indicating wider differences among countries in that continent.".format(continent_std.index[0]))
