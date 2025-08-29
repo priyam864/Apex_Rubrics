@@ -1,5 +1,3 @@
-
-
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -62,7 +60,17 @@ plt.tight_layout()
 
 # Save and Show
 plt.savefig(FIG_OUT, dpi=300, bbox_inches="tight")
-plt.show()   # shows inline
+plt.show()
 plt.close()
 
 print(f"\nBar chart saved to: {FIG_OUT}")
+
+# --- 7. Correlation Analysis ---
+corr_matrix = df[['Ladder score', 'Logged GDP per capita', 'Social support']].corr()
+print("\n### 5. Correlation Analysis ###")
+print(corr_matrix)
+
+# --- 8. Comparative Insights ---
+region_avgs = df.groupby("Regional indicator")[['Logged GDP per capita', 'Social support']].mean()
+print("\n### 6. Regional Averages of GDP & Social Support ###")
+print(region_avgs.sort_values(by="Logged GDP per capita", ascending=False))
