@@ -1,98 +1,68 @@
+
+
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
 
-# ---------------------------
-# Load dataset
-df = pd.read_csv("world-happiness-report-2021.csv")
+# --- 1. Load Dataset ---
+DATA_PATH = "world-happiness-report-2021.csv"  # update path if needed
+df = pd.read_csv(DATA_PATH)
 
-# If continent column does not exist, create a mapping from country to continent
-continent_map = {
-    # Africa
-    "Zimbabwe":"Africa", "Tanzania":"Africa", "Egypt":"Africa", "South Africa":"Africa",
-    # Asia
-    "India":"Asia", "Jordan":"Asia", "Cambodia":"Asia", "Afghanistan":"Asia",
-    # Europe
-    "Finland":"Europe", "Denmark":"Europe", "Switzerland":"Europe",
-    "Iceland":"Europe", "Netherlands":"Europe",
-    # Oceania
-    "Australia":"Oceania", "New Zealand":"Oceania",
-    # Americas
-    "United States":"North America", "Canada":"North America", "Brazil":"South America",
-    "Argentina":"South America"
-    # Add more countries as needed
-}
-df["Continent"] = df["Country name"].map(continent_map)
+# --- 2. Overall Happiness Scores ---
+mean_score = df["Ladder score"].mean()
+median_score = df["Ladder score"].median()
 
-# ---------------------------
-# 1. Descriptive Statistics
-# ---------------------------
-mean_score = round(df["Ladder score"].mean(), 2)
-median_score = round(df["Ladder score"].median(), 2)
-print(f"Mean Happiness Score: {mean_score}")
-print(f"Median Happiness Score: {median_score}")
+print("### 1. Overall Happiness Scores ###")
+print(f"Mean Happiness Score: {mean_score:.2f}")
+print(f"Median Happiness Score: {median_score:.2f}\n")
 
-print("\nInterpretation: Both mean and median are very close, indicating a fairly symmetric global distribution of happiness scores.")
+# --- 3. Country Rankings ---
+df_sorted = df.sort_values(by="Ladder score", ascending=False)
 
-# ---------------------------
-# 2. Ranking Analysis
-# ---------------------------
-sorted_df = df.sort_values(by="Ladder score", ascending=False)
+top5 = df_sorted.head(5)[["Country name", "Ladder score"]]
+bottom5 = df_sorted.tail(5)[["Country name", "Ladder score"]]
 
-# Top 5
-top5 = sorted_df.head(5)[["Country name","Ladder score"]]
-print("\nTop 5 Happiest Countries:\n", top5.to_string(index=False))
+print("### 2. Country Rankings ###")
+print("\nTop 5 Happiest Countries:")
+print(top5.to_string(index=False))
 
-# Bottom 5
-bottom5 = sorted_df.tail(5)[["Country name","Ladder score"]]
-print("\nBottom 5 Least Happy Countries:\n", bottom5.to_string(index=False))
+print("\nBottom 5 Happiest Countries:")
+print(bottom5.to_string(index=False))
 
-# Percent difference (relative percent change)
-highest = top5["Ladder score"].max()
-lowest = bottom5["Ladder score"].min()
-percent_diff = round(((highest - lowest) / lowest) * 100, 1)
-print(f"\nRelative Percent Difference between highest and lowest scoring countries: {percent_diff}%")
+# --- 4. Score Disparity ---
+highest = df_sorted.iloc[0]["Ladder score"]
+lowest = df_sorted.iloc[-1]["Ladder score"]
 
-print("\nInterpretation: Happiness in the top country ({}) is about {:.1f}% higher than the lowest country ({}). This uses relative percent change.".format(
-    top5.iloc[0]["Country name"], percent_diff, bottom5.iloc[-1]["Country name"]))
+percent_diff = ((highest - lowest) / lowest) * 100
 
-# ---------------------------
-# 3. Visualization: Avg Happiness by Continent
-# ---------------------------
-continent_avg = df.groupby("Continent")["Ladder score"].mean().sort_values()
+print("\n### 3. Score Disparity ###")
+print(f"Relative Percent Difference: {percent_diff:.2f}%")
+print(
+    f"Interpretation: The top-ranked country ({df_sorted.iloc[0]['Country name']}) "
+    f"has a happiness score over {percent_diff:.0f}% higher than the lowest-ranked country "
+    f"({df_sorted.iloc[-1]['Country name']}), showing vast inequality in well-being globally."
+)
 
-plt.figure(figsize=(10,6))
-sns.barplot(x=continent_avg.values, y=continent_avg.index, palette="viridis")
-plt.title("Average Happiness Score by Continent", fontsize=14)
-plt.xlabel("Average Ladder Score")
-plt.ylabel("Continent")
-plt.xlim(0,10)
+# --- 5. Average Happiness Score by Continent ---
+# Some datasets have 'Regional indicator', which we’ll treat as continent/region
+region_means = df.groupby("Regional indicator")["Ladder score"].mean().sort_values(ascending=False)
+
+print("\n### 4. Average Happiness Score by Continent/Region ###")
+print(region_means)
+
+# --- 6. Visualization ---
+FIG_OUT = "average_by_continent.png"
+
+plt.figure(figsize=(10, 6))
+region_means.plot(kind="bar", color="skyblue", edgecolor="black")
+plt.title("Average Happiness Score by Continent/Region (2021)", fontsize=14, weight="bold")
+plt.ylabel("Average Ladder Score")
+plt.xlabel("Region")
+plt.xticks(rotation=45, ha="right")
 plt.tight_layout()
-plt.show()
 
-print("\nInterpretation: Europe and Oceania have the highest average happiness scores, while Africa has the lowest on average.")
+# Save and Show
+plt.savefig(FIG_OUT, dpi=300, bbox_inches="tight")
+plt.show()   # shows inline
+plt.close()
 
-# ---------------------------
-# 4. Correlation Analysis
-# ---------------------------
-corr_gdp = round(df["Logged GDP per capita"].corr(df["Ladder score"]), 3)
-corr_social = round(df["Social support"].corr(df["Ladder score"]), 3)
-
-print(f"\nCorrelation with GDP per capita: {corr_gdp}")
-print(f"Correlation with Social support: {corr_social}")
-
-if corr_gdp > corr_social:
-    stronger_var = "GDP per capita"
-else:
-    stronger_var = "Social support"
-
-print(f"Interpretation: {stronger_var} shows a slightly stronger relationship with happiness, indicating economic prosperity or social cohesion are key factors.")
-
-# ---------------------------
-# 5. Complexity Extension: Standard Deviation by Continent
-# ---------------------------
-continent_std = df.groupby("Continent")["Ladder score"].std().sort_values(ascending=False)
-print("\nStandard Deviation of Happiness Scores by Continent:\n", continent_std)
-
-print("\nInterpretation: The continent with the greatest variability in happiness scores is {}, indicating wider differences among countries in that continent.".format(continent_std.index[0]))
+print(f"\nBar chart saved to: {FIG_OUT}")
